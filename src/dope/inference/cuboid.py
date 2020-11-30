@@ -60,6 +60,8 @@ class Cuboid3d():
         self._vertices = [0, 0, 0] * CuboidVertexType.TotalVertexCount
 
         self.generate_vertexes()
+        print("the dimension of objects, size3d = ",size3d)
+        print("center_location = ",center_location)
 
     def get_vertex(self, vertex_type):
         """Returns the location of a vertex.

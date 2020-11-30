@@ -86,7 +86,7 @@ import warnings
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 warnings.filterwarnings("ignore")
-os.environ["CUDA_VISIBLE_DEVICES"]="2, 3"
+os.environ["CUDA_VISIBLE_DEVICES"]="1, 2, 3"
 
 
 ##################################################
@@ -100,7 +100,7 @@ class DopeNetwork(nn.Module):
             #numBeliefMap=10,
             numBeliefMap=9,
             numAffinity=16,
-            numDim = 3,
+            numDim = 2,
             stop_at_stage=6  # number of stages to process (if less than total number of stages)
         ):
         super(DopeNetwork, self).__init__()
@@ -503,9 +503,6 @@ class MultipleVertexJson(data.Dataset):
         rotations           =   torch.from_numpy(np.array(
                                 data['rotations'])).float() 
 
-        # print("1-->pointsBelief", name, pointsBelief)
-        # print("1-->translations", name, translations)
-
         if len(points_all) == 0:
             points_all = torch.zeros(1, 10, 2).double()
         
@@ -546,7 +543,8 @@ class MultipleVertexJson(data.Dataset):
         else:
             for info in data["exported_objects"]:
                 if self.objectsofinterest in info['class'].lower():
-                    dimReal = info['cuboid_dimensions']
+                    dimen = info['cuboid_dimensions']
+                    dimRatio = [dimen[0]/dimen[1], dimen[2]/dimen[1]]
                     cuboid = np.array(info['cuboid_dimensions'])
 
         img_original = img.copy()        
@@ -585,8 +583,9 @@ class MultipleVertexJson(data.Dataset):
             pointsBelief[i_objects] = new_cuboid.tolist()
             objects_centroid[i_objects] = tuple(new_cuboid.tolist()[-1])
             pointsBelief[i_objects] = list(map(tuple, pointsBelief[i_objects]))
-            
-            # print("\n2-->pointsBelief", pointsBelief) 
+            #pointsBelief[i_objects].append(dimRatio)
+            #print("dimRatio", dimRatio)
+            #print("len(pointsBelief[0]", len(pointsBelief[0])) 
 
         for i_objects in range(len(points_keypoints)):
             points = points_keypoints[i_objects]
@@ -664,6 +663,7 @@ class MultipleVertexJson(data.Dataset):
                 DrawKeypoints(keypoint)
 
             img = self.transform(img)
+            
             return {
                 "img":img,
                 "translations":translations,
@@ -675,7 +675,6 @@ class MultipleVertexJson(data.Dataset):
                 'file_name':name,
             }
 
-        # print("pointsBelief", name, pointsBelief)
         # Create the belief map
         beliefsImg = CreateBeliefMap(
             img, 
@@ -738,11 +737,10 @@ class MultipleVertexJson(data.Dataset):
         if affinities.size()[2] == 49 and not self.test:
             affinities = torch.cat([affinities,torch.zeros(16,50,1)],dim=2)
         
-        dim = torch.zeros(3,1,1)
-        dim[0,0,0] = dimReal[0]
-        dim[1,0,0] = dimReal[1]
-        dim[2,0,0] = dimReal[2]
-        # print("dim = ",dim)
+        dim = torch.zeros(2,1,1)
+        dim[0,0,0] = dimRatio[0]
+        dim[1,0,0] = dimRatio[1]
+        # print("dim = ",dimRatio[0], dimRatio[1])
 
         #print("img, affinities, beliefs = ",img.shape, affinities.shape, beliefs.shape)
         # #show beliefmap
@@ -1489,9 +1487,9 @@ def _runnetwork(epoch, loader, train=True):
             else:
                 loss_tmp = ((l - target_dim) * (l-target_dim)).mean()
                 loss_dim += loss_tmp
-        # print("loss", 100*loss)
-        # print("loss_dim", 0.01*loss_dim) 
-        loss = 100*loss + 0.01*loss_dim
+        # print("loss", loss)
+        # print("loss_dim", loss_dim) 
+        loss = 10*loss + 0.1*loss_dim
         # print("loss", loss)  
 
         if train:

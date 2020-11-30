@@ -31,12 +31,15 @@ class CuboidPNPSolver(object):
                 [0, 0, 0]
             ])
         self._cuboid3d = cuboid3d
+
+        print("pass the dimension to the PNPsovler, object_name = ",object_name)
         
         self._dist_coeffs = dist_coeffs
 
     def set_camera_intrinsic_matrix(self, new_intrinsic_matrix):
         '''Sets the camera intrinsic matrix'''
         self._camera_intrinsic_matrix = new_intrinsic_matrix
+        print("Sets the camera intrinsic matrix",new_intrinsic_matrix)
 
     def set_dist_coeffs(self, dist_coeffs):
         '''Sets the camera intrinsic matrix'''
@@ -81,6 +84,7 @@ class CuboidPNPSolver(object):
         valid_point_count = len(obj_2d_points)
 
         # Can only do PNP if we have more than 3 valid points
+        print("valid_point_count = ",valid_point_count)
         is_points_valid = valid_point_count >= 4
 
         if is_points_valid:
@@ -92,6 +96,14 @@ class CuboidPNPSolver(object):
                 self._dist_coeffs,
                 flags=pnp_algorithm
             )
+            print("some parameters of cv2.solvePnP:")
+            print("obj_3d_points= ",obj_3d_points)
+            print("obj_2d_points= ",obj_2d_points)
+            print("camera_intrinsic_matrix =",self._camera_intrinsic_matrix)
+            print("the rusult of cv2.solvePnP:")
+            print("ret= ",ret)
+            print("rvec= ",rvec)
+            print("tvec= ",tvec)
 
             if ret:
                 location = list(x[0] for x in tvec)

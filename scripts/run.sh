@@ -1,0 +1,1 @@
+python train.py --data /home/ldmc/leoh/NDDS_data/kinds_can/ --object can --batchsize 128 --outf kindscan --pretrained True --gpuids 0 1 --epochs 60

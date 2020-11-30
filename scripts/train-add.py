@@ -84,6 +84,12 @@ import colorsys,math
 
 import warnings
 
+import sys
+sys.path.insert(1, '/home/ldmc/leoh/dope/src/dope/inference/')
+from cuboid import Cuboid3d
+from cuboid_pnp_solver import CuboidPNPSolver
+from detector import ObjectDetector
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 warnings.filterwarnings("ignore")
 os.environ["CUDA_VISIBLE_DEVICES"]="2, 3"
@@ -503,9 +509,6 @@ class MultipleVertexJson(data.Dataset):
         rotations           =   torch.from_numpy(np.array(
                                 data['rotations'])).float() 
 
-        # print("1-->pointsBelief", name, pointsBelief)
-        # print("1-->translations", name, translations)
-
         if len(points_all) == 0:
             points_all = torch.zeros(1, 10, 2).double()
         
@@ -546,6 +549,8 @@ class MultipleVertexJson(data.Dataset):
         else:
             for info in data["exported_objects"]:
                 if self.objectsofinterest in info['class'].lower():
+                    # dimen = info['cuboid_dimensions']
+                    # dimReal = [dimen[0], dimen[1], dimen[2]]
                     dimReal = info['cuboid_dimensions']
                     cuboid = np.array(info['cuboid_dimensions'])
 
@@ -585,8 +590,9 @@ class MultipleVertexJson(data.Dataset):
             pointsBelief[i_objects] = new_cuboid.tolist()
             objects_centroid[i_objects] = tuple(new_cuboid.tolist()[-1])
             pointsBelief[i_objects] = list(map(tuple, pointsBelief[i_objects]))
-            
-            # print("\n2-->pointsBelief", pointsBelief) 
+            #pointsBelief[i_objects].append(dimReal)
+            #print("dimReal", dimReal)
+            #print("len(pointsBelief[0]", len(pointsBelief[0])) 
 
         for i_objects in range(len(points_keypoints)):
             points = points_keypoints[i_objects]
@@ -664,6 +670,7 @@ class MultipleVertexJson(data.Dataset):
                 DrawKeypoints(keypoint)
 
             img = self.transform(img)
+            
             return {
                 "img":img,
                 "translations":translations,
@@ -675,7 +682,6 @@ class MultipleVertexJson(data.Dataset):
                 'file_name':name,
             }
 
-        # print("pointsBelief", name, pointsBelief)
         # Create the belief map
         beliefsImg = CreateBeliefMap(
             img, 
@@ -1395,6 +1401,7 @@ if not opt.datatest == "":
             root = opt.datatest,
             objectsofinterest=opt.object,
             keep_orientation = True,
+            test = True,
             noise = opt.noise,
             sigma = opt.sigma,
             data_size = opt.datasize,
@@ -1433,6 +1440,53 @@ with open (opt.outf+'/loss_test.csv','w') as file:
 
 nb_update_network = 0
 
+def ADD_error_cuboid(pred_pose, actual_pose, cuboid):
+    #obj = self.__obj_model
+    vertices = np.array(cuboid._vertices)
+    # print (vertices.shape)
+    vertices = np.insert(vertices,3,1,axis=1)
+    vertices = np.rot90(vertices,3)
+    # print(vertices)
+    
+
+    #obj_n = self.__obj_model_n
+    obj = vertices
+    pred_obj = np.matmul(pred_pose, obj)
+    
+    # obj = self.__obj_model
+    # pred_obj = np.matmul(pred_pose, obj)
+    # print (pred_obj)
+
+    actual_obj = np.matmul(actual_pose, obj)
+    #actual_obj = np.matmul(self.LtNT, actual_obj_l)
+    #print("PREDICTED OBJECT\n", pred_obj)
+    #print("ACTUAL OBJECT\n", actual_obj)	
+    dist = spatial.distance.cdist(pred_obj.T, actual_obj.T, 'euclidean')
+    true_dist = [dist[i][i] for i in range(len(dist))]
+    #for i in range(len(true_dist)):
+    #    if true_dist[i] >6000:
+    #        print(i, true_dist[i])
+    # print (true_dist)
+    # raise()
+    return np.mean(true_dist)
+
+def GetPoseMatrix(location,rotation):
+    """
+        Return the rotation Matrix from a vector translation 
+        and a quaternion rotation vector
+
+    """
+    from pyquaternion import Quaternion 
+    
+    pose_matrix = np.zeros([4,4])
+    q = Quaternion(x=rotation[0], y=rotation[1], z=rotation[2], w=rotation[3])
+
+    pose_matrix[0:3,0:3] = q.rotation_matrix
+    pose_matrix[0:3,3] = np.array(location)
+    pose_matrix[3,3] = 1
+
+    return pose_matrix    
+
 def _runnetwork(epoch, loader, train=True):
     global nb_update_network
     # net
@@ -1440,6 +1494,7 @@ def _runnetwork(epoch, loader, train=True):
         net.train()
     else:
         net.eval()
+
 
     for batch_idx, targets in enumerate(loader):
 
@@ -1452,9 +1507,9 @@ def _runnetwork(epoch, loader, train=True):
                        
         if train:
             optimizer.zero_grad()
-        target_belief = Variable(targets['beliefs'].cuda())       
-        target_affinity = Variable(targets['affinities'].cuda())
-        target_dim = Variable(targets['dim'].cuda())
+            target_belief = Variable(targets['beliefs'].cuda())       
+            target_affinity = Variable(targets['affinities'].cuda())
+            target_dim = Variable(targets['dim'].cuda())
         #print("target_dim", target_dim.shape) 
         #print("target_dimval", target_dim) 
         # for m in range(10):
@@ -1465,6 +1520,35 @@ def _runnetwork(epoch, loader, train=True):
         #     myimage = unloader(myimage)
         #     plt.imshow(myimage)
         #     plt.pause(1)
+
+        if not train:
+            config_detect = lambda: None
+            config_detect.mask_edges = 1
+            config_detect.mask_faces = 1
+            config_detect.vertex = 1
+            config_detect.treshold = 0.5
+            config_detect.softmax = 1000
+            config_detect.thresh_angle = 0.5
+            config_detect.thresh_map = 0.01
+            config_detect.sigma = 2
+            config_detect.thresh_points = 0.1
+
+            rotations     = np.array(targets['rot_quaternions'])
+            translations  = np.array(targets['translations'])
+            matrix_camera = np.array(targets['matrix_camera'])
+            cuboid        = Cuboid3d(np.array(targets['cuboid']))
+            filename      = targets['file_name']
+            pointsBelief  = targets['pointsBelief'].numpy()
+
+            pnp_solver = CuboidPNPSolver(filename,matrix_camera,cuboid)
+            detected_objects = ObjectDetector.find_object_poses(output_belief[-1][0], output_affinities[-1][0], pnp_solver, config_detect)
+
+            add = ADDErrorCuboid(
+                    pose_gu = GetPoseMatrix(detected_objects[0]['location'],detected_objects[0]['quaternion']),
+                    pose_gt = GetPoseMatrix(translations[0],rotations[0]),
+                    cuboid  = cuboid
+                )
+
 
         loss = None
         loss_dim = None
@@ -1489,9 +1573,9 @@ def _runnetwork(epoch, loader, train=True):
             else:
                 loss_tmp = ((l - target_dim) * (l-target_dim)).mean()
                 loss_dim += loss_tmp
-        # print("loss", 100*loss)
+        # print("loss", 1000*loss)
         # print("loss_dim", 0.01*loss_dim) 
-        loss = 100*loss + 0.01*loss_dim
+        loss = 1000*loss + 0.01*loss_dim
         # print("loss", loss)  
 
         if train:

@@ -6,24 +6,28 @@ downscale_height: 500      # if the input image is larger than this, scale it do
 
 # Comment any of these lines to prevent detection / pose estimation of that object
 weights: {
-    # "cracker":"package://dope/weights/cracker_60.pth",
-    # "gelatin":"package://dope/weights/gelatin_60.pth",
-    # "meat":"package://dope/weights/meat_20.pth",
-    # "mustard":"package://dope/weights/mustard_60.pth",
-    "soup":"package://dope/weights/soup_60.pth",
-    #"sugar":"package://dope/weights/sugar_60.pth",
-    # "bleach":"package://dope/weights/bleach_28_dr.pth"
+    #"cracker":"package://dope/weights/cracker_60.pth",
+    #"gelatin":"package://dope/weights/gelatin_60.pth",
+    #"meat":"package://dope/weights/meat_20.pth",
+    #"mustard":"package://dope/weights/mustard_60.pth",
+    #"soup":"package://dope/weights/soup_60.pth",
+    # "sugar":"package://dope/weights/sugar_60.pth",
+    # "bleach":"package://dope/weights/bleach_28_dr.pth",
+    #"statue":"package://dope/weights/statue_43.pth",
+    "cube":"package://dope/weights/cube_60.pth"
 }
 
 # Cuboid dimension in cm x,y,z
 dimensions: {
-    "cracker": [16.403600692749023,21.343700408935547,7.179999828338623],
+    #"cracker": [16.403600692749023,21.343700408935547,7.179999828338623],
     "gelatin": [8.918299674987793, 7.311500072479248, 2.9983000755310059],
-    "meat": [10.164673805236816,8.3542995452880859,5.7600898742675781],
-    "mustard": [9.6024150848388672,19.130100250244141,5.824894905090332],
-    "soup": [6.7659378051757813,10.185500144958496,6.771425724029541],
-    "sugar": [9.267730712890625,17.625339508056641,4.5134143829345703],
-    "bleach": [10.267730712890625,26.625339508056641,7.5134143829345703],
+    #"meat": [10.164673805236816,8.3542995452880859,5.7600898742675781],
+    #"mustard": [9.6024150848388672,19.130100250244141,5.824894905090332],
+    #"soup": [6.7659378051757813,10.185500144958496,6.771425724029541],
+    #"sugar": [9.267730712890625,17.625339508056641,4.5134143829345703],
+    #"bleach": [10.267730712890625,26.625339508056641,7.5134143829345703],
+    "statue": [ 38.660301208496094, 86.632896423339844, 38.660301208496094 ],
+    "cube": [ 256, 256, 256 ]
 }
 
 class_ids: {
@@ -34,6 +38,8 @@ class_ids: {
     "soup":    5,
     "sugar":   6,
     "bleach":  7,
+    "statue": 8,
+    "cube": 9
 }
 
 draw_colors: {
@@ -44,6 +50,8 @@ draw_colors: {
     "soup": [255, 101, 0],  # orange
     "sugar": [232, 222, 12],  # yellow
     "bleach": [232, 222, 12],  # yellow
+    "statue": [217,12, 232],
+    "cube": [232, 222, 12]
 }
 
 # optional: provide a transform that is applied to the pose returned by DOPE
@@ -76,6 +84,7 @@ mesh_scales: {
     "soup":    0.01,
     "sugar":   0.01,
     "bleach":  0.01,
+    "cube": 0.01
 }
 
 # Config params for DOPE
@@ -83,3 +92,13 @@ thresh_angle: 0.5
 thresh_map: 0.01
 sigma: 3
 thresh_points: 0.1
+
+
+#mycube
+#sigma: 4
+#mycube
+#thresh_map: 0.001
+#mycube
+#thresh_points: 0.001
+
+

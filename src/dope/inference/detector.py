@@ -19,6 +19,10 @@ import torchvision.transforms as transforms
 from scipy.ndimage.filters import gaussian_filter
 from torch.autograd import Variable
 
+
+from PIL import Image
+import matplotlib.pyplot as plt
+
 # Import the definition of the neural network model and cuboids
 
 #global transform for image input
@@ -85,9 +89,9 @@ class DopeNetwork(nn.Module):
                                              numAffinity, False)
 
 
-    def forward(self, x):
-        '''Runs inference on the neural network'''
-
+    def forward(self, x):#Runs inference on the neural network
+        
+        print("x_size = ", x.shape)
         out1 = self.vgg(x)
 
         out1_2 = self.m1_2(out1)
@@ -247,13 +251,36 @@ class ObjectDetector(object):
 
         # Run network inference
         image_tensor = transform(in_img)
+        print("image size = ",image_tensor.shape)
         image_torch = Variable(image_tensor).cuda().unsqueeze(0)
         out, seg = net_model(image_torch)
         vertex2 = out[-1][0]
         aff = seg[-1][0]
 
+        print("vertex2.shape = ",vertex2.shape)
+        print("aff.shape = ",aff.shape)
+        print("vertex2.type = ",type(vertex2))
+        print("aff.type = ",type(aff))
+
+        #show beliefmap
+        # unloader = transforms.ToPILImage()
+        # myimage = vertex2.cpu().clone()
+        # myimage = myimage.squeeze(0)
+        # myimage = unloader(myimage)
+        # plt.imshow(myimage)
+        # plt.pause(0.001)
+
+        # #show affinity
+        # unloader = transforms.ToPILImage()
+        # myimage2 = aff.cpu().clone()
+        # myimage2 = myimage2.squeeze(0)
+        # myimage2 = unloader(myimage2)
+        # plt.imshow(myimage2)
+        # plt.pause(0.001)
+
         # Find objects from network output
         detected_objects = ObjectDetector.find_object_poses(vertex2, aff, pnp_solver, config)
+        print("This is detect_object_in_image function, detected_objects = ", detected_objects)
 
         return detected_objects
 
@@ -263,15 +290,17 @@ class ObjectDetector(object):
 
         # Detect objects from belief maps and affinities
         objects, all_peaks = ObjectDetector.find_objects(vertex2, aff, config)
+        #print("objects = ",objects)
+        #print("all_peaks = ",all_peaks)
         detected_objects = []
         obj_name = pnp_solver.object_name
 
         for obj in objects:
             # Run PNP
             points = obj[1] + [(obj[0][0]*8, obj[0][1]*8)]
+            print("This is find_object_poses function, 2Dpoints = ",points)
             cuboid2d = np.copy(points)
             location, quaternion, projected_points = pnp_solver.solve_pnp(points)
-
             # Save results
             detected_objects.append({
                 'name': obj_name,
@@ -292,9 +321,12 @@ class ObjectDetector(object):
         peak_counter = 0
         for j in range(vertex2.size()[0]):
             belief = vertex2[j].clone()
+            #print("belief = ",belief)
             map_ori = belief.cpu().data.numpy()
+            #print("map_ori = ",map_ori)
             
             map = gaussian_filter(belief.cpu().data.numpy(), sigma=config.sigma)
+            #print("map = ",map)
             p = 1
             map_left = np.zeros(map.shape)
             map_left[p:,:] = map[:-p,:]
@@ -313,8 +345,11 @@ class ObjectDetector(object):
                                     map >= map_down, 
                                     map > config.thresh_map)
                                 )
+            # print("config.sigma = ",config.sigma)
+            # print("thresh_map = ",config.thresh_map)               
+            #print("peaks_binary = ",peaks_binary)
             peaks = zip(np.nonzero(peaks_binary)[1], np.nonzero(peaks_binary)[0]) 
-            
+            print("peaks = ",peaks)
             # Computing the weigthed average for localizing the peaks
             peaks = list(peaks)
             win = 5
@@ -337,7 +372,7 @@ class ObjectDetector(object):
                         j_values[j+ran, i+ran] = p[0] + j
 
                         weights[j+ran, i+ran] = (map_ori[p[1]+i, p[0]+j])
-
+                #print("This is find_objects function, weight = ",weights)
                 # if the weights are all zeros
                 # then add the none continuous points
                 OFFSET_DUE_TO_UPSAMPLING = 0.4395
@@ -370,6 +405,9 @@ class ObjectDetector(object):
                     [None for i in range(numvertex)],
                     all_peaks[-1][nb_object][2]
                 ])
+        #     print("all_peaks[-1][nb_object][2] = ",all_peaks[-1][nb_object][2])
+        # print("thresh_points = ",config.thresh_points)
+        #print("objects =",objects)
 
         # Working with an output that only has belief maps
         if aff is None:

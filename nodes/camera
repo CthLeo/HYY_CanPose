@@ -16,7 +16,13 @@ from sensor_msgs.msg import Image, CameraInfo
 import sys
 
 
-def publish_images(freq=100):
+def publish_images(freq=1):
+    #video_path = r"/home/leoh/Pictures/video/YCB_Video_0000_Color.avi"
+    #video_path = r"/home/leoh/Pictures/video/ndds.avi"
+    #video_path = r"/home/leoh/Pictures/video/trainPicture.avi"
+    #video_path = r"/home/leoh/Pictures/video/newPic.avi"
+    #video_path = r"/home/leoh/Pictures/video/statue.avi"
+    video_path = r"/home/leoh/Pictures/video/cube.avi"
     cam_index = 0  # index of camera to capture
 
     ### initialize ROS publishers etc.
@@ -42,7 +48,7 @@ def publish_images(freq=100):
         rospy.logwarn('Camera is not calibrated, please supply a valid camera_info_url parameter!')
 
     ### open camera
-    cap = cv2.VideoCapture(cam_index)
+    cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         rospy.logfatal("ERROR:  Unable to open camera for capture.  Is camera plugged in?")
         sys.exit(1)
